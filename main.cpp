@@ -64,9 +64,9 @@ void setup() {
   PORTC = 0b00010101;
 
   // Enable pullup resistors for the Hall effect sensors.
-  PORTB |= (1 << PB4);  // Hall C
+  PORTB |= (1 << PB4);  // Hall A
   PORTB |= (1 << PB5);  // Hall B
-  PORTB |= (1 << PB6);  // Hall A
+  PORTB |= (1 << PB6);  // Hall C
 
   // Enable pin change for the Hall effect sensors.
   PCMSK0 |= (1 << PCINT4);  // Hall A
