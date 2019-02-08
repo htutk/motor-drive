@@ -18,6 +18,7 @@
  *   - PC4: CH inverting
  *   - PC5: CL
  */
+#include <limits.h>
 #include <Arduino.h>
 
 /**
@@ -88,5 +89,5 @@ void setup() {
 }
 
 void loop() {
-  delay(1000);
+  delay(ULONG_MAX);
 }
