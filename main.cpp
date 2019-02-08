@@ -1,54 +1,49 @@
 #include <Arduino.h>
-#include <EnableInterrupt.h>
-
-int const PIN_HALL_A = 12;
-int const PIN_HALL_B = 11;
-int const PIN_HALL_C = 10;
 
 /**
- * Forward commutation sequence.
- *
- * The commutation sequence is encoded in an integer array. The array index is
- * a bitmask of the outputs of Hall effect sensors A, B, and C, respectively.
- * The value is a bitmask indicating which MOSFETs should be turned on. The
- * first array value (index 0) is filled with a dummy value.
- *
- *   |-----------|-----------------------------|---------------|
- *   | A | B | C | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Index | Value |
- *   |---+---+---|----+----+----+----+----+----|-------+-------|
- *   | 1   0   0 |  1    0    0    0    0    1 |     4      33 |
- *   | 1   1   0 |  0    0    1    0    0    1 |     6       9 |
- *   | 0   1   0 |  0    1    1    0    0    0 |     2      24 |
- *   | 0   1   1 |  0    1    0    0    1    0 |     3      18 |
- *   | 0   0   1 |  0    0    0    1    1    0 |     1       6 |
- *   | 1   0   1 |  1    0    0    1    0    0 |     5      36 |
- *   |-----------|-----------------------------|---------------|
+ * |-----------|   |-----------------------------|
+ * | C | B | A |   | CL | CH | BL | BH | AL | AH |
+ * |---+---+---|   |----+----+----+----+----+----|
+ * | 0 | 0 | 1 | 1 |  1 |  1 |  0 |  1 |  0 |  0 |
+ * | 0 | 1 | 0 | 2 |  0 |  1 |  0 |  0 |  1 |  1 |
+ * | 0 | 1 | 1 | 3 |  1 |  1 |  0 |  0 |  0 |  1 |
+ * | 1 | 0 | 0 | 4 |  0 |  0 |  1 |  1 |  0 |  1 |
+ * | 1 | 0 | 1 | 5 |  0 |  1 |  1 |  1 |  0 |  0 |
+ * | 1 | 1 | 0 | 6 |  0 |  1 |  0 |  1 |  1 |  1 |
+ * |-----------|   |-----------------------------|
  */
-int const MAP_COMMUTATION_FORWARD[7] = { 0b000000, 0b000110, 0b110000, 0b010010,
-    0b100001, 0b100100, 0b001001 };
+int const MAP_COMMUTATION[7] = { 0, 0b00110100, 0b00010011, 0b00110001,
+    0b00001101, 0b00011100, 0b00010111 };
 
-/**
- * Handles changes to the rotor state.
- *
- * The Hall effect sensor pins are bits 7, 6, and 5 of port B, corresponding to
- * sensors A, B, and C.
- */
-void onRotorStateChange() {
+ISR(PCINT0_vect) {
   int index = (PINB & 0b01110000) >> 4;
-  Serial.println(MAP_COMMUTATION_FORWARD[index]);
+  PORTC = MAP_COMMUTATION[index];
 }
 
 void setup() {
-  Serial.begin(115200);
+  // Set PORTC as an output. PC0-PC6 are used as inputs to the HIP4086APZ.
+  DDRC |= (1 << PC0);  // CL
+  DDRC |= (1 << PC1);  // CH (inverting)
+  DDRC |= (1 << PC2);  // BL
+  DDRC |= (1 << PC3);  // BH (inverting)
+  DDRC |= (1 << PC4);  // AL
+  DDRC |= (1 << PC5);  // AH (inverting)
 
-  // Setup Hall effect sensors.
-  pinMode(PIN_HALL_A, INPUT_PULLUP);
-  pinMode(PIN_HALL_B, INPUT_PULLUP);
-  pinMode(PIN_HALL_C, INPUT_PULLUP);
+  // Initially set all MOSFETs off.
+  PORTC = 0b00010101;
 
-  enableInterrupt(PIN_HALL_A, onRotorStateChange, CHANGE);
-  enableInterrupt(PIN_HALL_B, onRotorStateChange, CHANGE);
-  enableInterrupt(PIN_HALL_C, onRotorStateChange, CHANGE);
+  // Enable pullup resistors for the Hall effect sensors.
+  PORTB |= (1 << PB4);  // Hall C
+  PORTB |= (1 << PB5);  // Hall B
+  PORTB |= (1 << PB6);  // Hall A
+
+  // Enable pin change for the Hall effect sensors.
+  PCMSK0 |= (1 << PCINT4);  // Hall A
+  PCMSK0 |= (1 << PCINT5);  // Hall B
+  PCMSK0 |= (1 << PCINT6);  // Hall C
+
+  // Enable pin change interrupts.
+  PCICR |= (1 << PCIE0);
 }
 
 void loop() {
