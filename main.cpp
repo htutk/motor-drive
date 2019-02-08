@@ -1,8 +1,28 @@
+/**
+ * A motor drive controller for brushless DC motors.
+ *
+ * Pin assignments:
+ *
+ *   - PB4: Hall effect sensor A
+ *   - PB5: Hall effect sensor B
+ *   - PB6: Hall effect sensor C
+ *
+ *   - PC0: AH inverting
+ *   - PC1: AL
+ *   - PC2: BH inverting
+ *   - PC3: BL
+ *   - PC4: CH inverting
+ *   - PC5: CL
+ */
 #include <Arduino.h>
 
 /**
+ * Brushless DC motor commutation sequence.
+ *
  * |-----------|   |-----------------------------|
- * | C | B | A |   | CL | CH | BL | BH | AL | AH |
+ * |  Sensors  |   |        MOSFET States        |
+ * |-----------|   |-----------------------------|
+ * | C   B   A |   | CL   CH   BL   BH   AL   AH |
  * |---+---+---|   |----+----+----+----+----+----|
  * | 0 | 0 | 1 | 1 |  1 |  1 |  0 |  1 |  0 |  0 |
  * | 0 | 1 | 0 | 2 |  0 |  1 |  0 |  0 |  1 |  1 |
@@ -15,6 +35,13 @@
 int const MAP_COMMUTATION[7] = { 0, 0b00110100, 0b00010011, 0b00110001,
     0b00001101, 0b00011100, 0b00010111 };
 
+/**
+ * Handles changes to the rotor state.
+ *
+ * Hall effect sensor values are read through port B and used as an index into
+ * the commutation table. The commutation value is then used as output to the
+ * gate driver, which is connected on port C.
+ */
 ISR(PCINT0_vect) {
   int index = (PINB & 0b01110000) >> 4;
   PORTC = MAP_COMMUTATION[index];
