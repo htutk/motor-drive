@@ -23,11 +23,19 @@
 /**
  * Brushless DC motor commutation sequence.
  *
+ * The sensors should never be all off (000) or all on (111). Since C arrays
+ * are zero indexed, a dummy value that sets all MOSFETs off is used for the
+ * case when all sensors are reported to be off.
+ *
+ * The HIP4086APZ inverts the high side inputs, so 0 is used to turn AH, BH,
+ * and CH on while 1 is used to turn them off.
+ *
  * |-----------|   |-----------------------------|
  * |  Sensors  |   |        MOSFET States        |
  * |-----------|   |-----------------------------|
  * | C   B   A |   | CL   CH   BL   BH   AL   AH |
  * |---+---+---|   |----+----+----+----+----+----|
+ * | 0 | 0 | 0 | 0 |  0 |  1 |  0 |  1 |  0 |  1 |
  * | 0 | 0 | 1 | 1 |  1 |  1 |  0 |  1 |  0 |  0 | AH and CL on
  * | 0 | 1 | 0 | 2 |  0 |  1 |  0 |  0 |  1 |  1 | BH and AL on
  * | 0 | 1 | 1 | 3 |  1 |  1 |  0 |  0 |  0 |  1 | BH and CL on
@@ -36,7 +44,7 @@
  * | 1 | 1 | 0 | 6 |  0 |  0 |  0 |  1 |  1 |  1 | CH and AL on
  * |-----------|   |-----------------------------|
  */
-int const MAP_COMMUTATION[7] = { 0, 0b00110100, 0b00010011, 0b00110001,
+int const MAP_COMMUTATION[] = { 0b00010101, 0b00110100, 0b00010011, 0b00110001,
     0b00001101, 0b00011100, 0b00000111 };
 
 /**
@@ -47,6 +55,8 @@ int const MAP_COMMUTATION[7] = { 0, 0b00110100, 0b00010011, 0b00110001,
  * gate driver, which is connected on port C.
  */
 ISR(PCINT0_vect) {
+  // The HIP4086APZ implements a dead time, so the commutation order can be
+  // switched immediately.
   int index = (PINB & 0b01110000) >> 4;
   PORTC = MAP_COMMUTATION[index];
 }
@@ -68,7 +78,7 @@ void setup() {
   PORTB |= (1 << PB5);  // Hall B
   PORTB |= (1 << PB6);  // Hall C
 
-  // Enable pin change for the Hall effect sensors.
+  // Enable pin change notifications for the Hall effect sensors.
   PCMSK0 |= (1 << PCINT4);  // Hall A
   PCMSK0 |= (1 << PCINT5);  // Hall B
   PCMSK0 |= (1 << PCINT6);  // Hall C
