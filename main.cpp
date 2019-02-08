@@ -1,12 +1,16 @@
 /**
  * A motor drive controller for brushless DC motors.
  *
+ * The controller reads inputs from Hall effect sensors to determine the rotor
+ * state of a brushless DC motor. The controller determine which MOSFETS to
+ * enable in the inverter based on the current rotor state. The MOSFETs are
+ * driven by a HIP4086APZ three phase gate driver connected on port C.
+ *
  * Pin assignments:
  *
  *   - PB4: Hall effect sensor A
  *   - PB5: Hall effect sensor B
  *   - PB6: Hall effect sensor C
- *
  *   - PC0: AH inverting
  *   - PC1: AL
  *   - PC2: BH inverting
